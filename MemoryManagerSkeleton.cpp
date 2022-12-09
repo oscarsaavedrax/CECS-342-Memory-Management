@@ -81,35 +81,109 @@ namespace MemoryManager
 		if ((int)(*(unsigned short*)(MM_pool)) + aSize + 6 > 65536)
 			onOutOfMemory();
 	// TBD
+
+		int freeHead = 0; // starting index of the freelist
+		int inUseHead = 2; // starting index of the inUselist
+		int usedHead = 4; // starting index for the used list - deallocated memory
+
+		int trueSize = aSize + 6; // give each new node 6 bytes to store size, next, and previous
+		int freeMemIndex = *(unsigned short*)(MM_pool + freeHead); // Index of start of free memory list
+		int inUseMemIndex = *(unsigned short*)(MM_pool + inUseHead); //Index of start of in use memory
+		int newFreeMemIndex = *(unsigned short*)(MM_pool + freeHead) + trueSize; // Index of start of new free memory after insertion
+
+		int totalFreeMem = MM_POOL_SIZE - newFreeMemIndex;
+
+		int prevLink = inUseMemIndex + 4;
+
+		int newNextLink = freeMemIndex + 2;
+		int newPrevLink = freeMemIndex + 4;
+
+		int newInUseMemIndex = *(unsigned short*)(MM_pool + inUseHead);
+
+		*(unsigned short*)(MM_pool + inUseHead) = freeMemIndex;
+		*(unsigned short*)(MM_pool + freeHead) = newFreeMemIndex;
+
+		if(freeMemIndex != 6)
+			*(unsigned short*)(MM_pool + prevLink) = freeMemIndex;
+
+		*(unsigned short*)(MM_pool + newNextLink) = inUseMemIndex;
+		*(unsigned short*)(MM_pool + newPrevLink) = 0;
+
+		*(unsigned short*)(MM_pool + freeMemIndex) = aSize;
+
+		*(unsigned short*)(MM_pool + newFreeMemIndex) = totalFreeMem;
+
+		return (void*)(MM_pool + *(unsigned short*)MM_pool - aSize);
+
 	}
 
 	// Free up a chunk previously allocated
 	void deallocate(void* aPointer)
 	{
 	// TBD
+
+		int freeHead = 0; // starting index of the freelist
+		int inUseHead = 2; // starting index of the inUselist
+		int usedHead = 4; // starting index for the used list - deallocated memory
+
+		int deleteNodeIndex = (char*)aPointer - MM_pool - 6;
+
+		int prevNodeIndex = *(unsigned short*)(MM_pool + deleteNodeIndex + 2);
+		int nextNodeIndex = *(unsigned short*)(MM_pool + deleteNodeIndex + 4);
+
+		*(unsigned short*)(MM_pool + prevNodeIndex + 4) = nextNodeIndex;
+		*(unsigned short*)(MM_pool + nextNodeIndex + 2) = prevNodeIndex;
+
+		int usedMemIndex = *(unsigned short*)(MM_pool + usedHead);
+
+		*(unsigned short*)(MM_pool + deleteNodeIndex + 4) = 0;
+		*(unsigned short*)(MM_pool + deleteNodeIndex + 2) = usedMemIndex;
+
+		*(unsigned short*)(MM_pool + usedMemIndex + 2) = deleteNodeIndex;
+
+		*(unsigned short*)(MM_pool + usedHead) = deleteNodeIndex;
+		
+
 	}
 	// returns the number of bytes allocated by ptr
 	int size(void *ptr)
 	{
 	// TBD
+		return sizeof(ptr);
+		
 	}
 	
 	// Will scan the memory pool and return the total free space remaining
 	int freeMemory(void)
 	{
 	// TBD
+		int freeHead = 0; // starting index of the freelist
+		int freeMem = MM_POOL_SIZE - *(unsigned short*)(MM_pool + freeHead);
+		return freeMem;
 	}
 
 	// Will scan the memory pool and return the total used memory - memory that has been deallocated
 	int usedMemory(void)
 	{
 	// TBD
+		int usedMem = 0;
+		int nextNode = *(unsigned short*)(MM_pool + 4);
+
+		while (nextNode > 0)
+		{
+			usedMem = usedMem + *(unsigned short*)(MM_pool + nextNode) + 6;
+			nextNode = *(unsigned short*)(MM_pool + nextNode + 2);
+		}
+
+		return usedMem;
 	}
 
 	// Will scan the memory pool and return the total in use memory - memory being curretnly used
 	int inUseMemory(void)
 	{
 	// TBD
+		int inUseMem = MM_POOL_SIZE - freeMemory() - usedMemory() - 6;
+		return inUseMem;
 	}
 
 	void onOutOfMemory(void)
