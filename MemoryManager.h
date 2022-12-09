@@ -46,6 +46,8 @@ namespace MemoryManager
 	// Call if no space is left for the allocation request
 	void onOutOfMemory(void);
 
+	void traverseInUse(void);
+	void traverseUsed(void);
 };
 
 
